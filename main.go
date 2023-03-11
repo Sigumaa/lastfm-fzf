@@ -10,7 +10,10 @@ import (
 	r "github.com/mattn/go-runewidth"
 	"log"
 	"os"
+	"sync"
 )
+
+var cache sync.Map
 
 func main() {
 	key, user, err := LoadConfig()
@@ -23,16 +26,17 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	var names []string
 	names = append(names, user)
-	n := f.Len()
-	for i := 0; i < n; i++ {
+	for i := 0; i < f.Len(); i++ {
 		fn, err := f.Name(i)
 		if err != nil {
 			log.Fatal(err)
 		}
 		names = append(names, fn)
 	}
+
 	_, err = fuzzyfinder.FindMulti(
 		names,
 		func(i int) string {
@@ -50,6 +54,12 @@ func main() {
 }
 
 func userInfo(i, w, h int, key string, names []string) string {
+	if v, ok := cache.Load(names[i]); ok {
+		if info, ok := v.(string); ok {
+			return info
+		}
+	}
+
 	cu := lfu.New(names[i], key)
 	ui, err := cu.Info(context.TODO())
 	if err != nil {
@@ -68,7 +78,10 @@ func userInfo(i, w, h int, key string, names []string) string {
 
 	lfi := fmt.Sprintf("Last.fm %s Info", names[i])
 	pc := fmt.Sprintf("Play Count: %s", ui.PlayCount())
-	return fmt.Sprintf("%s\n%s\n%s\n\n\n%s\n%s\n%s\n", r.Wrap(lfi, w/2-5), r.Wrap(pc, w/2-5), r.Wrap(rts, w/2-5), r.Wrap(tar, w/2-5), r.Wrap(ttr, w/2-5), r.Wrap(tal, w/2-5))
+	info := fmt.Sprintf("%s\n%s\n%s\n\n\n%s\n%s\n%s\n", r.Wrap(lfi, w/2-5), r.Wrap(pc, w/2-5), r.Wrap(rts, w/2-5), r.Wrap(tar, w/2-5), r.Wrap(ttr, w/2-5), r.Wrap(tal, w/2-5))
+
+	cache.Store(names[i], info)
+	return info
 }
 
 func LoadConfig() (string, string, error) {
