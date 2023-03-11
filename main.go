@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -21,7 +20,6 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	c := lfu.New(user, key)
 	f, err := c.Friends(context.TODO())
 	if err != nil {
@@ -86,14 +84,14 @@ func userInfo(i, w, h int, key string, names []string) string {
 }
 
 func LoadConfig() (string, string, error) {
-	if err := godotenv.Load(); err != nil {
-		return "", "", errors.New("error loading .env file")
-	}
-	if os.Getenv("API_KEY") == "" {
-		return "", "", errors.New("API_KEY is not set")
-	}
-	if os.Getenv("USER_NAME") == "" {
-		return "", "", errors.New("USER_NAME is not set")
+	if os.Getenv("API_KEY") == "" || os.Getenv("USER_NAME") == "" {
+		if err := godotenv.Load(); err != nil {
+			return "", "", err
+		}
+		if os.Getenv("API_KEY") == "" || os.Getenv("USER_NAME") == "" {
+			return "", "", fmt.Errorf("API_KEY or USER_NAME is not set")
+		}
+		return os.Getenv("API_KEY"), os.Getenv("USER_NAME"), nil
 	}
 	return os.Getenv("API_KEY"), os.Getenv("USER_NAME"), nil
 }
